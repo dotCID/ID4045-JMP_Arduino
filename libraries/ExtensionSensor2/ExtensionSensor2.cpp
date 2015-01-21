@@ -1,0 +1,43 @@
+#include <Arduino.h>
+#include <ExtensionSensor2.h>
+
+#define LOWER_THRESHOLD 3
+
+ExtensionSensor::ExtensionSensor(){
+	_step = 9; // 9mm?
+}
+
+float ExtensionSensor::read(){
+	_t_0 = _read_index;							// reading(t)
+	_t_1 = _read_index==0?2:_read_index-1;		// reading(t-1)
+	_t_2 = _read_index==1?2:_read_index==0?1:0;	// reading(t-2)
+	
+	_readings[_t_0] = analogRead(_pin) * _resolution; // rad
+	_readTimes[_t_0] = millis();
+	_read_index = _read_index==2?0:_read_index+1;
+	
+	_speed = (_readings[_t_2] - 4*_readings[_t_1] - 3*_readings[_t_0])/(2 * (_readTimes[_t_2] - _readTimes[_t_0]));
+	return _speed;
+}
+	
+unsigned long ExtensionSensor::lastReading(){
+	return _lastTime;
+}
+
+unsigned long ExtensionSensor::currentReading(){
+	return _currentTime;
+}
+
+void ExtensionSensor::setLocation(float location){
+	_location = location;
+}
+
+float ExtensionSensor::getLocation(){
+	return _location;
+}
+
+void ExtensionSensor::setDirection(int direction){
+	if(direction == -1 || direction == 1)
+		_direction = direction;
+}
+
