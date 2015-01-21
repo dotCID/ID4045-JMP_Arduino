@@ -2,16 +2,15 @@
 #include <ExtensionSensor.h>
 
 
-ExtensionSensor::ExtensionSensor(int pin){
-	_pin = pin;
-	_step = 0.009; // 9mm?
+ExtensionSensor::ExtensionSensor(){
+	_step = 9; // 9mm?
 }
 
 float ExtensionSensor::read(){
 	_lastTime = _currentTime;
 	_currentTime = millis();
-	_speed = _step / ((_currentTime - _lastTime)*1000); // m / s
-	_location+= _step*_direction;
+	_speed = _step / (_currentTime - _lastTime); // m / s
+//	_location+= _step*_direction;
 	return _speed;
 }
 	

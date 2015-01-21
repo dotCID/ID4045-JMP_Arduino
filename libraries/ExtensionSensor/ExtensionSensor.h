@@ -11,7 +11,7 @@
 class ExtensionSensor
 {
 public:
-	ExtensionSensor(int pin);
+	ExtensionSensor();
 	float read();
 	
 	unsigned long lastReading();
@@ -21,7 +21,6 @@ public:
 	float getLocation();
 	
 private:
-	int _pin;
 	unsigned long _lastTime;
 	unsigned long _currentTime;
 	int _direction;

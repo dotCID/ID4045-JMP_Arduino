@@ -15,11 +15,10 @@
 #define RSFRAC_MIN 0.1
 
 /**************************
- *	  Testing values	  *
+ *	  Testing booleans	  *
  **************************/
 bool test = true; 
 bool PIDtest = true;
-float old_SFrac = 0;
 /**************************/
  
 
@@ -53,15 +52,13 @@ float hPos, hDes, vPos, vDes;
 float eSpeed, rSpeed; // SI units
 float eSpeedDes = 0.5; // m/s
 float rSpeedDes = 1.0; // d/s
-
+float eSpeedMin = 0.1;
+float rSpeedMin = 0.1;
 float eSFrac = ESFRAC_MIN;
 float rSFrac = RSFRAC_MIN;
-
-float eSpeed_P_accel = 0.3; 			// P controllers
-float eSpeed_P_brake = 0.4;
-
-
-bool eBrake, rBrake, eRunning, rRunning;
+float eSpeed_P = 0.1; // P controllers
+float rSpeed_P = 0.1;
+bool eBrake, rBrake;
 float ePos, eDes, rPos, rDes;
 int eDir, rDir;
 int timer1_counter;
@@ -154,37 +151,56 @@ void processSerial(){
 	}
 }
 
-int speedPID_ext(){
-	if(!eRunning) return 0; // quit if we're supposed to stand still
-	
-	if(eDir == 1 && ePos > 0.60 * eDes){
+void speedPID_ext(){
+	if(eDir == 1 && ePos > 0.75 * eDes){
 		eBrake = true;
-	}else if(eDir == -1 && ePos < 0.60 * eDes){
+	}else if(eDir == -1 && ePos < 0.75 * eDes){
 		eBrake = true;
-	}else eBrake = false;
+	}
 	
 	if(!eBrake){
 		if(eSpeed < eSpeedDes){
-			eSFrac += eSFrac * eSpeed_P_accel;
-			if(eSFrac > 1.0) eSFrac = 1.0;
+			eSFrac += eSFrac * eSpeed_P;
+			if(eSFrac > 1) eSFrac = 1;
 		}else if(eSpeed > eSpeedDes){
-			eSFrac -= eSFrac * eSpeed_P_accel;
+			eSFrac -= eSFrac * eSpeed_P;
 			if(eSFrac < ESFRAC_MIN) eSFrac = ESFRAC_MIN;
 		}
-		
 	}else{
-		
-		if(eSFrac < ESFRAC_MIN){
-			eSFrac = ESFRAC_MIN;
-		}else if(eSFrac > ESFRAC_MIN){
-			eSFrac -= eSFrac * eSpeed_P_brake;
+		if(eSpeed < eSpeedMin){
+			eSFrac += eSFrac * eSpeed_P;
+			if(eSFrac > 1) eSFrac = 1;
+		}else if(eSpeed > eSpeedMin){
+			eSFrac -= eSFrac * eSpeed_P;
+			if(eSFrac < ESFRAC_MIN) eSFrac = ESFRAC_MIN;
 		}
 	}
-	return 1;
 }
 
 void speedPID_rot(){
-	
+	if(rDir == 1 && rPos > 0.75 * rDes){
+		rBrake = true;
+	}else if(rDir == -1 && rPos < 0.75 * rDes){
+		rBrake = true;
+	}
+
+	if(!rBrake){
+		if(rSpeed < rSpeedDes){
+			rSFrac += rSFrac * rSpeed_P;
+			if(rSFrac > 1) rSFrac = 1;
+		}else if(rSpeed > rSpeedDes){
+			rSFrac -= rSFrac * rSpeed_P;
+			if(rSFrac < RSFRAC_MIN) rSFrac = RSFRAC_MIN;
+		}
+	}else{
+		if(rSpeed < rSpeedMin){
+			rSFrac += rSFrac * rSpeed_P;
+			if(rSFrac > 1) rSFrac = 1;
+		}else if(rSpeed > rSpeedMin){
+			rSFrac -= rSFrac * rSpeed_P;
+			if(rSFrac < RSFRAC_MIN) rSFrac = RSFRAC_MIN;
+		}
+	}
 }
 
 void calcDir(){
@@ -202,7 +218,9 @@ void calcHVfromER(){
 	vPos = sin(rPos) * ePos;
 }
 
-void loop(){	
+void loop(){
+	float old_SFrac = 0;
+	
 	processSerial();
 
 	calcDir();
@@ -213,28 +231,38 @@ void loop(){
 	//rPos = rSens.getLocation();
 	//calcHVfromER();
 	
-	if((eDir == 1 && ePos >= eDes-1) || (eDir == -1 && ePos <=eDes+1) ){ // if we're close, run free
-		eMot.free();
-		eRunning = false;
-		
-		if(PIDtest) eSpeed = 0;
-	}else if((eDir == 1 && ePos >= eDes) || (eDir == -1 && ePos <=eDes) ){ // in case of overshoot, stop
+	if(ePos >= eDes){
 		eMot.stop();
-		eRunning = false;
-		
-		if(PIDtest) eSpeed = 0;
+if(PIDtest) eSpeed = 0;
+		eBrake = false;
 	}else{
-		if(PIDtest) {if(eSpeed == 0){ eSpeed = 0.1;} old_SFrac = rSFrac;}
-		
-		eRunning = true;
+
+if(PIDtest) {if(eSpeed == 0) eSpeed = 0.1;  old_SFrac = rSFrac;}
+
 		speedPID_ext();
 		
-		if(PIDtest) { eSpeed += (eSpeed * (eSFrac - old_SFrac))*eDir; };
+if(PIDtest) { eSpeed += eSpeed * (eSFrac - old_SFrac); };
 
 		eMot.setSpeed(eSFrac);
 		eMot.run(eDir);
 		
-		if(PIDtest) ePos += eSpeed; 
+if(PIDtest) ePos += eSpeed; 
+	}
+	
+	if(rPos >= rDes){
+		rMot.stop();
+		rBrake = false;
+	}else{
+if(PIDtest) { if(rSpeed == 0) rSpeed = 0.1; old_SFrac = rSFrac;}
+
+		speedPID_rot();
+
+if(PIDtest) { rSpeed += rSpeed * (rSFrac - old_SFrac); };
+
+		rMot.setSpeed(rSFrac);
+		rMot.run(rDir);
+
+if(PIDtest) rPos += rSpeed; 
 	}
 if(test) Serial.print("ePos = "); Serial.println(ePos);
 if(test) Serial.print("eDes = "); Serial.println(eDes);
@@ -250,7 +278,6 @@ if(test) delay(1000);
 
 ISR(TIMER1_OVF_vect){
 	interrupts();				// enable interrupts because other interrupt has priority
-	if(test) Serial.println("rSens.read()");
 	TCNT1 = timer1_counter;
 	rSpeed = rSens.read();
 }

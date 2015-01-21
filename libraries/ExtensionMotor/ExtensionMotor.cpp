@@ -6,34 +6,46 @@
 #include <Arduino.h>
 #include <ExtensionMotor.h>
 
-static int _fwd[4] = {0,1,0,1};
-static int _bck[4] = {1,0,1,0};
-static int _stop[4] ={0,0,0,0};
-static int _free[4] ={1,1,0,0};
 
-ExtensionMotor::ExtensionMotor(int pchan1, int pchan2, int nchan1, int nchan2){
-	_pins[0] = pchan1;
-	_pins[1] = pchan2;
-	_pins[2] = nchan1;
-	_pins[3] = nchan2;
+static int	_fwd[3] = {1,0,0};
+static int	_bck[3] = {0,1,0};
+static int	_stop[3] ={1,1,0};
+static int	_free[3] ={0,0,0};
+	
+
+ExtensionMotor::ExtensionMotor(int fwd, int rev, int dis){
+	_pins[0] = fwd;
+	_pins[1] = rev;
+	_pins[2] = dis;
+	
 	
 	ExtensionMotor::stop();
 }
 
 bool ExtensionMotor::run(int direction){
-
-	return false; 
+	_direction = direction==1?1:-1;
+	if(_direction == 1){
+		for(int i=0;i<2;i++)
+			digitalWrite(_pins[i],_fwd[i]);
+		analogWrite(_pins[2],_speed);
+	}else{
+		for(int i=0;i<2;i++)
+			digitalWrite(_pins[i],_bck[i]);
+		analogWrite(_pins[2],_speed);
+	}
+	
+	return true; 
 }
 
 bool ExtensionMotor::stop(){
-	for(int i=0;i<4;i++)
+	for(int i=0;i<3;i++)
 		digitalWrite(_pins[i],_stop[i]);
 	
 	return true;
 }
 
 bool ExtensionMotor::free(){
-	for(int i=0;i<4;i++)
+	for(int i=0;i<3;i++)
 		digitalWrite(_pins[i],_free[i]);
 	
 	return true;

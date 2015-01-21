@@ -11,7 +11,7 @@
 class ExtensionMotor
 {
 public:
-	ExtensionMotor(int pchan1, int pchan2, int nchan1, int nchan2);
+	ExtensionMotor(int fwd, int rev, int dis);
 	bool run(int direction);
 	bool stop();
 	bool free();
@@ -24,14 +24,11 @@ public:
 	bool isActive();
 	
 private:
-	int _pins[4];
+	int _pins[3];
 	int _speed;
 	int _direction;
 	bool _active;
-	int _fwd[4];
-	int _bck[4];
-	int _stop[4];
-	int _free[4];
+	
 };
 
 #endif
