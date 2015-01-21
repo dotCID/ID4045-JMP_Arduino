@@ -133,6 +133,7 @@ void loop(){
 		
 		eMot.setSpeed(eSFrac);
 		eMot.run(eDir);
+		eSens.setDirection(eDir);
 		
 	}
 	

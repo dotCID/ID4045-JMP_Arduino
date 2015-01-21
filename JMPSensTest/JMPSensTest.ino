@@ -2,13 +2,13 @@
    @author Marien Wolthuis
    date created 21/1/2015			*/
 
-//include <ExtensionSensor2.h>
+#include <ExtensionSensor2.h>
 #include <RotationSensor2.h>
 #include <Math.h>
 
 #define ESFRAC_MIN 0.1
 
-//ExtensionSensor eSens;
+ExtensionSensor eSens;
 RotationSensor rSens(A0);
 volatile float eSpeed;
 volatile float rSpeed;
@@ -16,7 +16,7 @@ int timer1_counter;
 
 unsigned long lR;
 void setup(){
-	//attachInterrupt(0, ISR_eSens, FALLING);
+	attachInterrupt(0, ISR_eSens, FALLING);
 	
 	noInterrupts();           // disable all interrupts
   	TCCR1A = 0;
@@ -31,7 +31,7 @@ void setup(){
 }
 
 void ISR_eSens(){
-	//eSpeed = eSens.read();
+	eSpeed = eSens.read();
 		//Serial.println(eSpeed);
 }
 
@@ -44,6 +44,7 @@ ISR(TIMER1_OVF_vect){
 
 void loop(){
 //	unsigned long temp = eSens.lastReading();
-	//Serial.println(rSpeed);
+	Serial.print("rSpeed = ");Serial.println(rSpeed);
+	Serial.print("eSpeed = ");Serial.println(eSpeed);
 	//Serial.println(analogRead(A0));
 }

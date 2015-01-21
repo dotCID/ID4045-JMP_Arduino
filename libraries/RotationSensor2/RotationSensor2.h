@@ -27,7 +27,7 @@ private:
 	unsigned long _readTimes[3];
 	int _direction;
 	float _speed;
-	float _resolution;
+	float _multiplier;
 };
 
 #endif
