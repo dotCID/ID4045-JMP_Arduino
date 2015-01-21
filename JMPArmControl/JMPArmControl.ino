@@ -5,7 +5,7 @@
 #include <ExtensionMotor.h>
 #include <RotationMotor.h>
 #include <ExtensionSensor.h>
-#include <RotationSensor.h>
+#include <RotationSensor2.h> // experimental one
 #include <Math.h>
 
 #define EPOS_MAX 70
@@ -203,6 +203,7 @@ void serialEvent() {
 
 
 ISR(TIMER1_OVF_vect){
-  TCNT1 = timer1_counter;
-  rSpeed = rSens.read();
+	interrupts();				// enable interrupts because other interrupt has priority
+	TCNT1 = timer1_counter;
+	rSpeed = rSens.read();
 }
