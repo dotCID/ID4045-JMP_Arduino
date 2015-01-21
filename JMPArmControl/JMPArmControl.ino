@@ -203,14 +203,16 @@ void loop(){
 	rPos = rSens.getLocation();
 	calcHVfromER();
 	
-	if(ePos == eDes) 
+	if(ePos == eDes){
 		eMot.stop();
-	else
+		eBrake = false;
+	}else
 		eMot.run(eDir);
 	
-	if(rPos == rDes)
+	if(rPos == rDes){
 		rMot.stop();
-	else
+		rBrake = false;
+	}else
 		rMot.run(rDir);
 }
 
