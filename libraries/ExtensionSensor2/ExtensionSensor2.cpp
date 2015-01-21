@@ -11,7 +11,7 @@
 #define LOWER_THRESHOLD 3
 
 ExtensionSensor::ExtensionSensor(){
-	_step = 9; // 9mm?
+	_step = 9; // 9mm
 }
 
 float ExtensionSensor::read(){
@@ -24,16 +24,16 @@ float ExtensionSensor::read(){
 	
 	_location += _step * _direction;
 	
-	_speed = (2*_step/1000)/(_readings[_t_2] - 4*_readings[_t_1] - 3*_readings[_t_0]));
+	_speed = (2*_step/1000)/(_readings[_t_2] - 4*_readings[_t_1] - 3*_readings[_t_0]);
 	return _speed;
 }
 	
 unsigned long ExtensionSensor::lastReading(){
-	return _readings[_t_0];
+	return _readings[_t_1];
 }
 
 unsigned long ExtensionSensor::currentReading(){
-	return _currentTime;
+	return _readings[_t_0];
 }
 
 void ExtensionSensor::setLocation(float location){

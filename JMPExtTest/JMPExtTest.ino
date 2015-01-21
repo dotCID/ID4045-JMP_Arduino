@@ -1,4 +1,4 @@
-/* Arduino Code for JMP, version 0.8
+/* Unit test for the Extension motor and sensor combination
    @author Marien Wolthuis
    date created 21/1/2015			*/
    

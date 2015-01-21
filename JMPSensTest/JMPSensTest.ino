@@ -1,4 +1,4 @@
-/* Arduino Code for JMP, version 0.8
+/* Sensor Unit test for ID4045 JMP
    @author Marien Wolthuis
    date created 21/1/2015			*/
 

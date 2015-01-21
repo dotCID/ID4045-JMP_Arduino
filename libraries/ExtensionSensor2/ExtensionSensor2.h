@@ -1,7 +1,9 @@
-/* Arduino Code for JMP, version 0.1
-   Sensor controller class
+/* Extension sensor library for ID4045 JMP
+   Speed is estimated by means of a second order backwards finite difference equation
    @author Marien Wolthuis
-   date created 20/1/2015			*/
+   @author Doga Emirdag
+   Written 21/01/2015
+   */
    
 #ifndef ExtensionSensor2_h
 #define ExtensionSensor2_h
