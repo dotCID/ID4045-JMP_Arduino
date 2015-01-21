@@ -41,8 +41,12 @@ float hPos, hDes, vPos, vDes;
 float eSpeed, rSpeed; // SI units
 float eSpeedDes = 0.5; // m/s
 float rSpeedDes = 1.0; // d/s
+float eSpeedMin = 0.1;
+float rSpeedMin = 0.1;
 float eSFrac, rSFrac;
-float eSpeed_P, rSpeed_P;
+float eSpeed_P = 0.1; // P controllers
+float rSpeed_P = 0.1;
+bool eBrake, rBrake;
 float ePos, eDes, rPos, rDes;
 int eDir, rDir;
 int timer1_counter;
@@ -128,16 +132,45 @@ void processSerial(){
 }
 
 void speedPID(){
-	if(eSpeed < eSpeedDes){
-		eSFrac += eSFrac * eSpeed_P;
-	}else if(eSpeed > eSpeedDes){
-		eSFrac -= eSFrac * eSpeed_P;
+	if(eDir == 1 && ePos < 0.75 * eDes){ // if(eDir==1)
+		eBrake = true;
+	}else if(eDir == -1 && ePos > 0.75 * eDes){
+		eBrake = true;
+	}
+	
+	if(!eBrake){
+		if(eSpeed < eSpeedDes){
+			eSFrac += eSFrac * eSpeed_P;
+		}else if(eSpeed > eSpeedDes){
+			eSFrac -= eSFrac * eSpeed_P;
+		}
+	}else{
+		if(eSpeed < eSpeedMin){
+			eSFrac += eSFrac * eSpeed_P;
+		}else if(eSpeed > eSpeedMin){
+			eSFrac -= eSFrac * eSpeed_P;
+		}
+	}
+	
+	
+	if(rDir == 1 && rPos < 0.75 * rDes){ // if(eDir==1)
+		rBrake = true;
+	}else if(rDir == -1 && rPos > 0.75 * rDes){
+		rBrake = true;
 	}
 
-	if(rSpeed < rSpeedDes){
-		rSFrac += rSFrac * rSpeed_P;
-	}else if(eSpeed > eSpeedDes){
-		rSFrac -= rSFrac * rSpeed_P;
+	if(!rBrake){
+		if(rSpeed < rSpeedDes){
+			rSFrac += rSFrac * rSpeed_P;
+		}else if(rSpeed > rSpeedDes){
+			rSFrac -= rSFrac * rSpeed_P;
+		}
+	}else{
+		if(rSpeed < rSpeedMin){
+			rSFrac += rSFrac * rSpeed_P;
+		}else if(rSpeed > rSpeedMin){
+			rSFrac -= rSFrac * rSpeed_P;
+		}
 	}
 }
 
