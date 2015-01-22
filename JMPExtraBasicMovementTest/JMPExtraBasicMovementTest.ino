@@ -8,6 +8,13 @@
 #include <ExtensionSensor2.h>
 #include <Math.h>
 
+#define FWD_PIN 5
+#define REV_PIN 6
+#define DIS_PIN 7
+
+#define UP_PIN
+#define DOWN_PIN
+
 #define RPOS_MAX 70
 #define RPOS_MIN 0
 
@@ -31,23 +38,23 @@ int timer1_counter;
 RotationMotor rMot(10, 11);
 RotationSensor rSens(A0);
 
-ExtensionMotor eMot(5,7,6);
+ExtensionMotor eMot(FWD_PIN,REV_PIN,DIS_PIN);
 ExtensionSensor eSens;
 
 void setup(){
-	pinMode(5, OUTPUT); //fwd
-	digitalWrite(5, LOW);
+	pinMode(FWD_PIN, OUTPUT); //fwd
+	digitalWrite(FWD_PIN, LOW);
 	
-	pinMode(6, OUTPUT); //dis
-	digitalWrite(6, LOW);
+	pinMode(DIS_PIN, OUTPUT); //dis
+	digitalWrite(DIS_PIN, LOW);
 	
-	pinMode(7, OUTPUT); //rev
-	digitalWrite(7, LOW);
+	pinMode(REV_PIN, OUTPUT); //rev
+	digitalWrite(REV_PIN, LOW);
 	
-	pinMode(10, OUTPUT); //up
-	digitalWrite(10, LOW);
-	pinMode(11, OUTPUT); //down
-	digitalWrite(11, LOW);
+	pinMode(UP_PIN, OUTPUT); //up
+	digitalWrite(UP_PIN, LOW);
+	pinMode(DOWN_PIN, OUTPUT); //down
+	digitalWrite(DOWN_PIN, LOW);
 	
 	noInterrupts();           
   	TCCR1A = 0;
@@ -87,7 +94,7 @@ void processSerial(){
 		if(inputString == "up\n"){
 			Serial.println("Up");
 			if(rotation){
-				rMot.setSpeed(0.5);
+				rMot.setSpeed(1);
 				rMot.run(1);
 				delay(3000);
 				rMot.stop();
@@ -95,7 +102,7 @@ void processSerial(){
 		}else if(inputString == "down\n"){
 			Serial.println("Down");
 			if(rotation){
-				rMot.setSpeed(0.5);
+				rMot.setSpeed(1);
 				rMot.run(-1);
 				delay(3000);
 				rMot.stop();
@@ -108,27 +115,27 @@ void processSerial(){
 				delay(1000);
 				eMot.stop();*/
 				
-				digitalWrite(5, LOW);
-				digitalWrite(7, HIGH);
-				digitalWrite(6, HIGH);
+				digitalWrite(FWD_PIN, HIGH); 
+				digitalWrite(REV_PIN, LOW);
+				digitalWrite(DIS_PIN, LOW);
 				
 				delay(1000);
 				
-				digitalWrite(7, LOW);
-				digitalWrite(6, LOW);
+				digitalWrite(FWD_PIN, LOW);
+				digitalWrite(DIS_PIN, HIGH);
 				
 			}
 		}else if(inputString == "retract\n"){
 			Serial.println("retracting");
 			if(extension){
-				digitalWrite(5, HIGH);
-				digitalWrite(7, LOW);
-				digitalWrite(6, HIGH);
+				digitalWrite(FWD_PIN, LOW);
+				digitalWrite(REV_PIN, HIGH);
+				digitalWrite(DIS_PIN, LOW);
 				
 				delay(1000);
 				
-				digitalWrite(5, LOW);
-				digitalWrite(6, LOW);
+				digitalWrite(REV_PIN, LOW);
+				digitalWrite(DIS_PIN, HIGH);
 			}
 		}else if(inputString == "stop\n"){
 			Serial.println("Stop");
