@@ -14,6 +14,7 @@ float lastEspeed, lastRspeed;
 int timer1_counter;
 
 unsigned long lR;
+
 void setup(){
 	attachInterrupt(0, ISR_eSens, FALLING);
 	
@@ -32,7 +33,7 @@ void setup(){
 
 void ISR_eSens(){
 	eSpeed = eSens.read();
-	Serial.println(eSens.getLocation());
+	Serial.println(eSens.getLocation()/9.0);
 }
 
 
@@ -50,4 +51,6 @@ void loop(){
 	
 	lastRspeed = rSpeed;
 	lastEspeed = eSpeed;
+	Serial.println(eSens.discarded);
+	delay(5000);
 }

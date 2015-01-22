@@ -25,13 +25,13 @@ ExtensionMotor::ExtensionMotor(int fwd, int rev, int dis){
 bool ExtensionMotor::run(int direction){
 	_direction = direction==1?1:-1;
 	if(_direction == 1){
-		for(int i=0;i<2;i++)
+		for(int i=0;i<3;i++)
 			digitalWrite(_pins[i],_fwd[i]);
-		analogWrite(_pins[2],_speed);
+		//analogWrite(_pins[2],_speed);
 	}else{
-		for(int i=0;i<2;i++)
+		for(int i=0;i<3;i++)
 			digitalWrite(_pins[i],_bck[i]);
-		analogWrite(_pins[2],_speed);
+		//analogWrite(_pins[2],_speed);
 	}
 	
 	return true; 

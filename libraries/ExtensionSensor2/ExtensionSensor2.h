@@ -22,6 +22,9 @@ public:
 	void setLocation(float location);
 	float getLocation();
 	
+	// for testing
+	int discarded;
+	
 private:
 	unsigned long _readings[3];
 	int _t_0, _t_1, _t_2; // tracks last write index
@@ -29,6 +32,7 @@ private:
 	float _step;
 	float _location;
 	float _speed;
+	
 };
 
 #endif

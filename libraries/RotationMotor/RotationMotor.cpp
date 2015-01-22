@@ -18,18 +18,25 @@ RotationMotor::RotationMotor(int pin1, int pin2){
 	_pins[0] = pin1;
 	_pins[1] = pin2;
 	
+	pinMode(_pins[0], OUTPUT);
+	pinMode(_pins[1], OUTPUT);
+	
 	RotationMotor::stop();
 }
 
 bool RotationMotor::run(int direction){
 	_direction = direction;
 	if(direction == FORWARD){
-		for(int i=0;i<2;i++)
+		for(int i=0;i<2;i++){
 			analogWrite(_pins[i], (_speed * _fwd[i]));
+			//digitalWrite(_pins[i], _fwd[i]); // for now, speed does not matter
+		}
 		return true;
 	}else if(direction == BACKWARD){
-		for(int i=0;i<2;i++)
+		for(int i=0;i<2;i++){
 			analogWrite(_pins[i], (_speed * _bck[i]));
+			//digitalWrite(_pins[i], _bck[i]);
+		}
 		return true;
 	}
 	

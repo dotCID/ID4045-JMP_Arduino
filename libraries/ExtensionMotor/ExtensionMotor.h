@@ -28,7 +28,6 @@ private:
 	int _speed;
 	int _direction;
 	bool _active;
-	
 };
 
 #endif

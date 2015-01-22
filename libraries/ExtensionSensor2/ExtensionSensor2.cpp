@@ -9,17 +9,21 @@
 #include <ExtensionSensor2.h>
 
 #define LOWER_THRESHOLD 3
+#define DEBOUNCE_TIME 25
 
 ExtensionSensor::ExtensionSensor(){
 	_step = 9; // 9mm
 }
 
 float ExtensionSensor::read(){
+	unsigned long tmp = millis();
+	if(tmp - _readings[_t_0] < DEBOUNCE_TIME) {discarded++; return _speed; };// _t_0 here is the last _t_0, not the current t
+	
 	_t_0 = _t_0==2?0:_t_0+1;		// reading(t)
 	_t_1 = _t_0==0?2:_t_0-1;		// reading(t-1)
 	_t_2 = _t_0==1?2:_t_0==0?1:0;	// reading(t-2)
 	
-	_readings[_t_0] = millis();
+	_readings[_t_0] = tmp;
 	
 	_location += _step * _direction;
 	

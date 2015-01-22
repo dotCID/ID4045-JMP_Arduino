@@ -34,8 +34,8 @@ float ePos, eDes;
 int eDir;
 int timer1_counter;
 
-ExtensionMotor eMot(7, 8, 6);
-ExtensionSensor eSens(2);
+ExtensionMotor eMot(5, 6, 7);
+ExtensionSensor eSens;
 
 void setup(){
 	pinMode(5, OUTPUT); //fwd

@@ -28,10 +28,6 @@ private:
 	int _speed;
 	int _direction;
 	bool _active;
-	int _fwd[2];
-	int _bck[2];
-	int _stop[2];
-	int _free[2];
 };
 
 #endif
