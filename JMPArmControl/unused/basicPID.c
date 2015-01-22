@@ -4,7 +4,7 @@
    
 #include <ExtensionMotor.h>
 #include <RotationMotor.h>
-#include <ExtensionSensor.h>
+#include <ExtensionSensor2.h>
 #include <RotationSensor2.h> // experimental one
 #include <Math.h>
 
@@ -54,19 +54,19 @@ int speedPID_ext(){
 	
 	if(!eBrake){
 		if(eSpeed < eSpeedDes){
-			eSFrac += eSFrac * eSpeed_P_accel;
+			eSFrac += eSpeed_P_accel * (eSpeedDes - eSpeed);
 			if(eSFrac > 1) eSFrac = 1;
 		}else if(eSpeed > eSpeedDes){
-			eSFrac -= eSFrac * eSpeed_P_accel;
+			eSFrac -= eSpeed_P_accel * (eSpeed - eSpeedDes);
 			if(eSFrac < ESFRAC_MIN) eSFrac = ESFRAC_MIN;
 		}
 		
 	}else{
 		
 		if(eSFrac < ESFRAC_MIN){
-			if(eSFrac < ESFRAC_MIN) eSFrac = ESFRAC_MIN;
+			eSFrac = ESFRAC_MIN;
 		}else if(eSFrac > ESFRAC_MIN){
-			eSFrac -= eSFrac * eSpeed_P_brake;
+			eSFrac -= eSpeed_P_brake  * (eSFrac - ESFRAC_MIN);
 		}
 	}
 }
@@ -82,12 +82,12 @@ void loop(){
 	calcDir();
 	
 	if((eDir == 1 && ePos >= eDes-1) || (eDir == -1 && ePos <=eDes+1) ){ // if we're close..
-		//eMot.free();
+		eMot.free();
 		eRunning = false;
 		
 		if(PIDtest) eSpeed = 0;
 	}else if((eDir == 1 && ePos >= eDes) || (eDir == -1 && ePos <=eDes) ){ // in case of overshoot, stop
-		//eMot.stop();
+		eMot.stop();
 		eRunning = false;
 		
 		if(PIDtest) eSpeed = 0;
@@ -99,8 +99,8 @@ void loop(){
 		
 		if(PIDtest) { eSpeed += (eSpeed * (eSFrac - old_SFrac))*eDir; };
 
-		//eMot.setSpeed(eSFrac);
-		//eMot.run(eDir);
+		eMot.setSpeed(eSFrac);
+		eMot.run(eDir);
 		
 		if(PIDtest) ePos += eSpeed; 
 	}

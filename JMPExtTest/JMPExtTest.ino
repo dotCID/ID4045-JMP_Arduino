@@ -3,7 +3,7 @@
    date created 21/1/2015			*/
    
 #include <ExtensionMotor.h>
-#include <ExtensionSensor.h>
+#include <ExtensionSensor2.h>
 #include <Math.h>
 
 #define EPOS_MAX 70
@@ -21,14 +21,13 @@ String inputString = "";
 bool stringComplete = false;
 
 float hPos, hDes, vPos, vDes;
-float eSpeed; // SI units
+volatile float eSpeed; // SI units
 float eSpeedDes = 0.5; // m/s
 
 float eSFrac = ESFRAC_MIN;
 
 float eSpeed_P_accel = 0.3; 			// P controllers
 float eSpeed_P_brake = 0.4;
-
 
 bool eBrake, eRunning;
 float ePos, eDes;
@@ -43,9 +42,7 @@ void setup(){
 	pinMode(7, OUTPUT); //rev
 	pinMode(6, OUTPUT); //dis
 	
-	pinMode(2, INPUT); // IR sensor
-	
-	attachInterrupt(0, ISR_eSens, FALLING);
+	attachInterrupt(0, ISR_eSens, RISING);
 	
 	Serial.begin(9600);
 }
@@ -81,18 +78,18 @@ void processSerial(){
 int speedPID_ext(){
 	if(!eRunning) return 0; // quit if we're supposed to stand still
 	
-	if(eDir == 1 && ePos > 0.60 * eDes){
+	if(eDir == 1 && ePos > 0.75 * eDes){
 		eBrake = true;
-	}else if(eDir == -1 && ePos < 0.60 * eDes){
+	}else if(eDir == -1 && ePos < 0.75 * eDes){
 		eBrake = true;
 	}else eBrake = false;
 	
 	if(!eBrake){
 		if(eSpeed < eSpeedDes){
-			eSFrac += eSFrac * eSpeed_P_accel;
-			if(eSFrac > 1.0) eSFrac = 1.0;
+			eSFrac += eSpeed_P_accel * (eSpeedDes - eSpeed);
+			if(eSFrac > 1) eSFrac = 1;
 		}else if(eSpeed > eSpeedDes){
-			eSFrac -= eSFrac * eSpeed_P_accel;
+			eSFrac -= eSpeed_P_accel * (eSpeed - eSpeedDes);
 			if(eSFrac < ESFRAC_MIN) eSFrac = ESFRAC_MIN;
 		}
 		
@@ -101,7 +98,7 @@ int speedPID_ext(){
 		if(eSFrac < ESFRAC_MIN){
 			eSFrac = ESFRAC_MIN;
 		}else if(eSFrac > ESFRAC_MIN){
-			eSFrac -= eSFrac * eSpeed_P_brake;
+			eSFrac -= eSpeed_P_brake  * (eSFrac - ESFRAC_MIN);
 		}
 	}
 	return 1;
