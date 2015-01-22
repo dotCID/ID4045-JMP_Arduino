@@ -25,7 +25,7 @@ public:
 private:
 	int _pin;
 	float _readings[3];
-	int _t_0, _t_1, _t_2, _read_index; // tracks last write index
+	int _t_0, _t_1, _t_2; // tracks last write index
 	unsigned long _readTimes[3];
 	int _direction;
 	float _speed;

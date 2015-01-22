@@ -15,13 +15,12 @@ RotationSensor::RotationSensor(int pin){
 }
 
 float RotationSensor::read(){
-	_t_0 = _read_index;							// reading(t)
-	_t_1 = _read_index==0?2:_read_index-1;		// reading(t-1)
-	_t_2 = _read_index==1?2:_read_index==0?1:0;	// reading(t-2)
-	
+	_t_0 = _t_0==2?0:_t_0+1;		// reading(t)
+	_t_1 = _t_0==0?2:_t_0-1;		// reading(t-1)
+	_t_2 = _t_0==1?2:_t_0==0?1:0;	// reading(t-2)
+
 	_readings[_t_0] = (analogRead(_pin)-1023) * _multiplier; // rad
 	_readTimes[_t_0] = millis();
-	_read_index = _read_index==2?0:_read_index+1;
 
 //	Serial.print("t-2 ");Serial.println(_readings[_t_2]*100);
 //	Serial.print("t-1 ");Serial.println(_readings[_t_1]*100);

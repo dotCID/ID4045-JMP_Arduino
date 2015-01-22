@@ -24,7 +24,7 @@ public:
 	
 private:
 	unsigned long _readings[3];
-	int _t_0, _t_1, _t_2, _read_index; // tracks last write index
+	int _t_0, _t_1, _t_2; // tracks last write index
 	int _direction;
 	float _step;
 	float _location;
