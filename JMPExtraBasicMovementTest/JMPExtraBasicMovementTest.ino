@@ -9,19 +9,19 @@
 #include <Math.h>
 
 #define FWD_PIN 5
-#define REV_PIN 6
-#define DIS_PIN 7
+#define DIS_PIN 6
+#define REV_PIN 7
 
-#define UP_PIN
-#define DOWN_PIN
+#define UP_PIN 10
+#define DOWN_PIN 11
 
 #define RPOS_MAX 70
 #define RPOS_MIN 0
 
 #define RSFRAC_MIN 0.1
 
-bool rotation = true;
-bool extension = false;
+bool rotation = false;
+bool extension = true;
 
 String inputString = "";
 bool stringComplete = false;
@@ -108,8 +108,9 @@ void processSerial(){
 				rMot.stop();
 			}
 		}else if(inputString == "extend\n"){
-			Serial.println("extending");
-			if(extension){/*
+			if(extension){
+				Serial.println("extending");
+				/*			
 				eMot.setSpeed(1);
 				eMot.run(1);
 				delay(1000);
@@ -119,15 +120,15 @@ void processSerial(){
 				digitalWrite(REV_PIN, LOW);
 				digitalWrite(DIS_PIN, LOW);
 				
-				delay(1000);
+				delay(2000);
 				
 				digitalWrite(FWD_PIN, LOW);
 				digitalWrite(DIS_PIN, HIGH);
 				
 			}
 		}else if(inputString == "retract\n"){
-			Serial.println("retracting");
 			if(extension){
+				Serial.println("retracting");
 				digitalWrite(FWD_PIN, LOW);
 				digitalWrite(REV_PIN, HIGH);
 				digitalWrite(DIS_PIN, LOW);
@@ -143,6 +144,9 @@ void processSerial(){
 			eMot.stop();
 			rDes = rPos;
 			rMot.stop();
+			digitalWrite(FWD_PIN, LOW);
+			digitalWrite(REV_PIN, LOW);
+			digitalWrite(DIS_PIN, HIGH);
 		}else if(inputString.startsWith("eDes")){
 			String val = inputString.substring(5,10);
 			rDes = val.toFloat();
