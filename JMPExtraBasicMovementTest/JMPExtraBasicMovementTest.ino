@@ -8,9 +8,9 @@
 #include <ExtensionSensor2.h>
 #include <Math.h>
 
-#define FWD_PIN 5
-#define DIS_PIN 6
-#define REV_PIN 7
+#define FWD_PIN 7
+#define REV_PIN 6
+#define ENA_PIN 5
 
 #define UP_PIN 10
 #define DOWN_PIN 11
@@ -19,9 +19,11 @@
 #define RPOS_MIN 0
 
 #define RSFRAC_MIN 0.1
+#define ESFRAC_MIN 0.5
 
-bool rotation = false;
+bool rotation = true;
 bool extension = true;
+bool delayed = true;
 
 String inputString = "";
 bool stringComplete = false;
@@ -35,24 +37,27 @@ int rDir;
 int eDir;
 int timer1_counter;
 
-RotationMotor rMot(10, 11);
+RotationMotor rMot(UP_PIN, DOWN_PIN);
 RotationSensor rSens(A0);
 
-ExtensionMotor eMot(FWD_PIN,REV_PIN,DIS_PIN);
+ExtensionMotor eMot(FWD_PIN,REV_PIN,ENA_PIN);
 ExtensionSensor eSens;
 
 void setup(){
 	pinMode(FWD_PIN, OUTPUT); //fwd
 	digitalWrite(FWD_PIN, LOW);
 	
-	pinMode(DIS_PIN, OUTPUT); //dis
-	digitalWrite(DIS_PIN, LOW);
+	pinMode(ENA_PIN, OUTPUT); //dis
+	digitalWrite(ENA_PIN, LOW);
 	
 	pinMode(REV_PIN, OUTPUT); //rev
 	digitalWrite(REV_PIN, LOW);
 	
+	eMot.setSpeed(ESFRAC_MIN);
+	
 	pinMode(UP_PIN, OUTPUT); //up
 	digitalWrite(UP_PIN, LOW);
+	
 	pinMode(DOWN_PIN, OUTPUT); //down
 	digitalWrite(DOWN_PIN, LOW);
 	
@@ -72,7 +77,9 @@ void setup(){
 }
 
 void ISR_eSens(){
+	eSens.setDirection(1);
 	eSpeed = eSens.read();
+	//Serial.println(eSens.getLocation());
 }
 
 ISR(TIMER1_OVF_vect){
@@ -94,49 +101,76 @@ void processSerial(){
 		if(inputString == "up\n"){
 			Serial.println("Up");
 			if(rotation){
-				rMot.setSpeed(1);
-				rMot.run(1);
-				delay(3000);
-				rMot.stop();
+				//rMot.setSpeed(1);
+				//rMot.run(1);
+				//if(delayed) delay(3000);
+				//rMot.stop();
+				digitalWrite(UP_PIN, HIGH);
+				digitalWrite(DOWN_PIN, LOW);
+				if(delayed) delay(3000);
+				digitalWrite(UP_PIN, LOW);
 			}
 		}else if(inputString == "down\n"){
 			Serial.println("Down");
 			if(rotation){
-				rMot.setSpeed(1);
-				rMot.run(-1);
-				delay(3000);
-				rMot.stop();
+				//rMot.setSpeed(1);
+				//rMot.run(-1);
+				//if(delayed) delay(3000);
+				//rMot.stop();
+				
+				
+				digitalWrite(UP_PIN, LOW);
+				digitalWrite(DOWN_PIN, HIGH);
+				if(delayed) delay(3000);
+				digitalWrite(DOWN_PIN, LOW);
 			}
 		}else if(inputString == "extend\n"){
 			if(extension){
 				Serial.println("extending");
-				/*			
+				
 				eMot.setSpeed(1);
 				eMot.run(1);
-				delay(1000);
-				eMot.stop();*/
+				if(delayed) delay(300);
+				eMot.stop();
+				eMot.setSpeed(ESFRAC_MIN);
+				eMot.run(1);
+				if(delayed) delay(1000);
+				eMot.stop();
 				
-				digitalWrite(FWD_PIN, HIGH); 
+				/*
 				digitalWrite(REV_PIN, LOW);
-				digitalWrite(DIS_PIN, LOW);
+				digitalWrite(FWD_PIN, HIGH); 
+				analogWrite(ENA_PIN, 160);
+				delay(350); // get past flip point
+				analogWrite(ENA_PIN, 80);
 				
 				delay(2000);
 				
 				digitalWrite(FWD_PIN, LOW);
-				digitalWrite(DIS_PIN, HIGH);
+				digitalWrite(ENA_PIN, LOW); */
 				
+				Serial.println("done");
 			}
 		}else if(inputString == "retract\n"){
 			if(extension){
 				Serial.println("retracting");
-				digitalWrite(FWD_PIN, LOW);
-				digitalWrite(REV_PIN, HIGH);
-				digitalWrite(DIS_PIN, LOW);
 				
-				delay(1000);
+				eMot.setSpeed(ESFRAC_MIN);
+				eMot.run(-1);
+				if(delayed) delay(1000);
+				eMot.stop();
+				
+				
+				/*digitalWrite(FWD_PIN, LOW);
+				digitalWrite(ENA_PIN, HIGH);
+				digitalWrite(REV_PIN, HIGH);
+				//analogWrite(ENA_PIN, 180);
+				delay(2000);
 				
 				digitalWrite(REV_PIN, LOW);
-				digitalWrite(DIS_PIN, HIGH);
+				digitalWrite(ENA_PIN, LOW);*/
+				
+				Serial.println("done");
 			}
 		}else if(inputString == "stop\n"){
 			Serial.println("Stop");
@@ -146,10 +180,11 @@ void processSerial(){
 			rMot.stop();
 			digitalWrite(FWD_PIN, LOW);
 			digitalWrite(REV_PIN, LOW);
-			digitalWrite(DIS_PIN, HIGH);
+			digitalWrite(ENA_PIN, LOW);
 		}else if(inputString.startsWith("eDes")){
 			String val = inputString.substring(5,10);
 			rDes = val.toFloat();
+			rDes = floor(rDes/9.0)*9.0; // convert to multiples of 9 mm, which is what we're working with
 			//Serial.print("rDes is now ");Serial.println(rDes);
 		}else if(inputString.startsWith("rDes")){
 			String val = inputString.substring(5,10);
@@ -169,18 +204,25 @@ void calcDir(){
 
 void loop(){
 	
-	rMot.setSpeed(1);
-	eMot.setSpeed(0.5);
+	//rMot.setSpeed(1);
+	//eMot.setSpeed(0.5);
 	
 	processSerial();
 
 	calcDir();
 		
-	rPos = rSens.getLocation();
+	//rPos = rSens.getLocation();
+	ePos = eSens.getLocation();
 	
-	if(!rotation || (rDir == 1 && rPos >= rDes - rDes * 0.05) || (rDir == -1 && rPos <= rDes + rDes*0.05) ){
+	/*if(!rotation || (rDir == 1 && rPos >= rDes - rDes * 0.05) || (rDir == -1 && rPos <= rDes + rDes*0.05) ){
 		rMot.stop();
 	}else rMot.run(rDir);
+	*/
+	
+	//if(!extension || (eDir == 1 && ePos >= eDes - eDes * 0.05) || (eDir == -1 && ePos <= eDes + eDes*0.05) ){
+		//rMot.stop();
+	//}else// rMot.run(rDir);
+	/*
 	
 	Serial.print("rPos = "); Serial.println(rPos);
 	Serial.print("rDes = "); Serial.println(rDes);
@@ -194,5 +236,5 @@ void loop(){
 	Serial.println("************************************************");
 	Serial.println();
 
-	delay(500);
+	delay(500);*/
 }
