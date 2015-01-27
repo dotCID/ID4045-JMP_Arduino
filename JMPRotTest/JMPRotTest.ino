@@ -14,7 +14,7 @@
 /**************************
  *	  Testing values	  *
  **************************/
-bool test = false; 
+bool test = true; 
 /**************************/
 						
 String inputString = "";

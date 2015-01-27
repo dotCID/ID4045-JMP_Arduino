@@ -14,7 +14,6 @@ public:
 	RotationMotor(int pin1, int pin2);
 	bool run(int direction);
 	bool stop();
-	bool free();
 	
 	float getSpeed();
 	void setSpeed(float speed);

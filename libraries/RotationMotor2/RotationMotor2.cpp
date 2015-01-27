@@ -4,7 +4,7 @@
    date created 20/1/2015			*/
 
 #include <Arduino.h>
-#include <RotationMotor.h>
+#include <RotationMotor2.h>
 
 #define FORWARD 1
 #define BACKWARD -1
@@ -27,14 +27,12 @@ bool RotationMotor::run(int direction){
 	_direction = direction;
 	if(direction == FORWARD){
 		for(int i=0;i<2;i++){
-			analogWrite(_pins[i], (_speed * _fwd[i]));
-			//digitalWrite(_pins[i], _fwd[i]); // for now, speed does not matter
+			digitalWrite(_pins[i], _fwd[i]); // speed control not possible with this circuit
 		}
 		return true;
 	}else if(direction == BACKWARD){
 		for(int i=0;i<2;i++){
-			analogWrite(_pins[i], (_speed * _bck[i]));
-			//digitalWrite(_pins[i], _bck[i]);
+			digitalWrite(_pins[i], _bck[i]);
 		}
 		return true;
 	}
@@ -46,14 +44,6 @@ bool RotationMotor::stop(){
 	for(int i=0;i<2;i++)
 		digitalWrite(_pins[i],_stop[i]);
 	return true;
-}
-
-float RotationMotor::getSpeed(){
-	return (_speed / 255);
-}
-
-void RotationMotor::setSpeed(float speed){
-	_speed = (int) (speed * 255);
 }
 
 int RotationMotor::getDirection(){

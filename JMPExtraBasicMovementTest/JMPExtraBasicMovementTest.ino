@@ -1,4 +1,4 @@
-/* Unit test for the Extension motor and sensor combination
+/* Test sketch for the motors and sensors
    @author Marien Wolthuis
    date created 21/1/2015			*/
    
@@ -18,24 +18,48 @@
 #define RPOS_MAX 70
 #define RPOS_MIN 0
 
+#define EPOS_MAX 525
+#define EPOS_MIN 0
+
 #define RSFRAC_MIN 0.1
 #define ESFRAC_MIN 0.5
 
-bool rotation = true;
+#define MOVEMENT_TIMEOUT 2000
+
+#define TILT_POINT 72
+#define TILT_FRAC 0.55
+
+int loopCount;
+int offlinePrint = true;
+bool test = true; // controls output of prints
+
+bool rotation = false;
 bool extension = true;
-bool delayed = true;
 
 String inputString = "";
 bool stringComplete = false;
 
 volatile float rSpeed; // SI units
-volatile float eSpeed;
 
-float rPos, rDes;
-float ePos, eDes;
+volatile float eSpeed;
+float eSpeedDes = 0.01; // m/s
+
+float eSFrac = ESFRAC_MIN;
+
+float eSpeed_P_accel = 0.1; 			// P controllers
+float eSpeed_P_brake = 0.3;
+
+bool eBrake, eRunning, rBrake, rRunning;
+
+float rPos, rDes, rDis;
+float ePos, eDes, eDis;
 int rDir;
 int eDir;
 int timer1_counter;
+
+unsigned long movementTime;
+bool movementActive = false;
+bool beforeTilt = true;
 
 RotationMotor rMot(UP_PIN, DOWN_PIN);
 RotationSensor rSens(A0);
@@ -47,13 +71,11 @@ void setup(){
 	pinMode(FWD_PIN, OUTPUT); //fwd
 	digitalWrite(FWD_PIN, LOW);
 	
-	pinMode(ENA_PIN, OUTPUT); //dis
+	pinMode(ENA_PIN, OUTPUT); //enable
 	digitalWrite(ENA_PIN, LOW);
 	
 	pinMode(REV_PIN, OUTPUT); //rev
 	digitalWrite(REV_PIN, LOW);
-	
-	eMot.setSpeed(ESFRAC_MIN);
 	
 	pinMode(UP_PIN, OUTPUT); //up
 	digitalWrite(UP_PIN, LOW);
@@ -77,7 +99,6 @@ void setup(){
 }
 
 void ISR_eSens(){
-	eSens.setDirection(1);
 	eSpeed = eSens.read();
 	//Serial.println(eSens.getLocation());
 }
@@ -105,10 +126,6 @@ void processSerial(){
 				//rMot.run(1);
 				//if(delayed) delay(3000);
 				//rMot.stop();
-				digitalWrite(UP_PIN, HIGH);
-				digitalWrite(DOWN_PIN, LOW);
-				if(delayed) delay(3000);
-				digitalWrite(UP_PIN, LOW);
 			}
 		}else if(inputString == "down\n"){
 			Serial.println("Down");
@@ -117,17 +134,14 @@ void processSerial(){
 				//rMot.run(-1);
 				//if(delayed) delay(3000);
 				//rMot.stop();
-				
-				
-				digitalWrite(UP_PIN, LOW);
-				digitalWrite(DOWN_PIN, HIGH);
-				if(delayed) delay(3000);
-				digitalWrite(DOWN_PIN, LOW);
 			}
 		}else if(inputString == "extend\n"){
 			if(extension){
 				Serial.println("extending");
+				eDes = EPOS_MAX;
+				eRunning = true;
 				
+				/* Option 2: control the motor class hardcoded
 				eMot.setSpeed(1);
 				eMot.run(1);
 				if(delayed) delay(300);
@@ -136,8 +150,8 @@ void processSerial(){
 				eMot.run(1);
 				if(delayed) delay(1000);
 				eMot.stop();
-				
-				/*
+				*/
+				/* Option 3: Direct pin control
 				digitalWrite(REV_PIN, LOW);
 				digitalWrite(FWD_PIN, HIGH); 
 				analogWrite(ENA_PIN, 160);
@@ -149,19 +163,23 @@ void processSerial(){
 				digitalWrite(FWD_PIN, LOW);
 				digitalWrite(ENA_PIN, LOW); */
 				
-				Serial.println("done");
+				//Serial.println("done");
 			}
 		}else if(inputString == "retract\n"){
 			if(extension){
 				Serial.println("retracting");
+				eDes = EPOS_MIN;
+				eRunning = true;
 				
+				/* Option 2: control the motor class hardcoded
 				eMot.setSpeed(ESFRAC_MIN);
 				eMot.run(-1);
 				if(delayed) delay(1000);
 				eMot.stop();
+				*/
 				
-				
-				/*digitalWrite(FWD_PIN, LOW);
+				/* Option 3: Direct pin control
+				digitalWrite(FWD_PIN, LOW);
 				digitalWrite(ENA_PIN, HIGH);
 				digitalWrite(REV_PIN, HIGH);
 				//analogWrite(ENA_PIN, 180);
@@ -170,7 +188,7 @@ void processSerial(){
 				digitalWrite(REV_PIN, LOW);
 				digitalWrite(ENA_PIN, LOW);*/
 				
-				Serial.println("done");
+				//Serial.println("done");
 			}
 		}else if(inputString == "stop\n"){
 			Serial.println("Stop");
@@ -181,13 +199,16 @@ void processSerial(){
 			digitalWrite(FWD_PIN, LOW);
 			digitalWrite(REV_PIN, LOW);
 			digitalWrite(ENA_PIN, LOW);
-		}else if(inputString.startsWith("eDes")){
-			String val = inputString.substring(5,10);
-			rDes = val.toFloat();
-			rDes = floor(rDes/9.0)*9.0; // convert to multiples of 9 mm, which is what we're working with
-			//Serial.print("rDes is now ");Serial.println(rDes);
-		}else if(inputString.startsWith("rDes")){
-			String val = inputString.substring(5,10);
+		}else if(inputString == "home\n"){
+			goHome();
+		}else if(inputString.startsWith("aExt")){
+			eRunning = true;
+			String val = inputString.substring(5,inputString.length());
+			eDes = val.toFloat();
+			eDes = floor(eDes/9.0)*9.0; // convert to intervals of 9mm
+			Serial.print("eDes is now ");Serial.println(eDes);
+		}else if(inputString.startsWith("aRot")){
+			String val = inputString.substring(5,inputString.length());
 			rDes = val.toFloat();
 			//Serial.print("rDes is now ");Serial.println(rDes);
 		}
@@ -197,44 +218,138 @@ void processSerial(){
 	}
 }
 
+int speedPID_ext(){
+	if(!eRunning) return 0; // quit if we're supposed to stand still
+	
+	if(!movementActive){
+		movementTime = millis();
+		movementActive = true;
+		if(ePos > eDes) eDis = ePos - eDes;
+		else eDis = eDes - ePos;
+	}else{
+		if(millis()-movementTime>MOVEMENT_TIMEOUT){
+			Serial.println("****  TIMEOUT! ****");
+			eRunning  = false;
+			movementActive = false;
+			eMot.stop();
+			eSFrac = 0;
+			return -1;
+		}
+	}
+	
+	if(eDir == 1 && ePos > 0.60 * eDis){
+		eBrake = true;
+	}else if(eDir == -1 && ePos < 0.60 * eDis){
+		eBrake = true;
+	}else eBrake = false;
+	
+	if(!eBrake){
+		if(ePos < TILT_POINT){
+			eSFrac = TILT_FRAC;
+		}else{
+			if(beforeTilt){
+				eSFrac = ESFRAC_MIN;
+				beforeTilt = false;
+			}
+		}
+		
+		if(eSFrac < ESFRAC_MIN){
+			eSFrac = ESFRAC_MIN;
+		}else if(eSpeed < eSpeedDes){
+			eSFrac += eSpeed_P_accel * ((eSpeedDes/4.0) - eSpeed);
+			if(eSFrac > 1) eSFrac = 1;
+		}else if(eSpeed > eSpeedDes){
+			eSFrac -= eSpeed_P_accel * (eSpeed - (eSpeedDes/4.0));
+			if(eSFrac < ESFRAC_MIN) eSFrac = ESFRAC_MIN;
+		}
+		
+	}else{
+		
+		if(eSFrac < ESFRAC_MIN){
+			eSFrac = ESFRAC_MIN;
+		}else if(eSFrac > ESFRAC_MIN){
+			eSFrac -= eSpeed_P_brake  * (eSFrac - ESFRAC_MIN);
+		}
+	}
+	return 1;
+}
+
+
 void calcDir(){
 	rDir = rDes>rPos?1:-1;
 	eDir = eDes>ePos?1:-1;
 }
 
 void loop(){
-	
-	//rMot.setSpeed(1);
-	//eMot.setSpeed(0.5);
-	
 	processSerial();
-
+	
 	calcDir();
+	eSens.setDirection(eDir);	
+	if(eRunning) {
+		ePos = eSens.getLocation(); 
+	}else{
+		eSens.setLocation(ePos); // if it's not under power, assume any changes to be not happening
+	}
+	
+	if(!eRunning){
+		if(offlinePrint) { Serial.println("**** OFFLINE ****"); offlinePrint = false;
+		Serial.print("ePos = ");Serial.println(ePos); }
+		eMot.stop();
+		eSFrac = 0;
+		movementActive = false;
+	}else if((eDir == 1 && ePos >= eDes-1) || (eDir == -1 && ePos <=eDes+1) ){ // if we're close, run free
+		offlinePrint = true;
+		Serial.println("**** CLOSE CALL! ****");
+		Serial.print("ePos = ");Serial.println(ePos);
+		eMot.free();
+		eSFrac = ESFRAC_MIN;
+		eRunning = false;
+		movementActive = false;
 		
-	//rPos = rSens.getLocation();
-	ePos = eSens.getLocation();
+	}else if((eDir == 1 && ePos >= eDes) || (eDir == -1 && ePos <=eDes) ){ // in case of overshoot, stop
+		offlinePrint = true;
+		Serial.println("**** OVERSHOT! ****");
+		Serial.print("ePos = ");Serial.println(ePos);
+		eMot.stop();
+		eSFrac = 0;
+		eRunning = false;
+		movementActive = false;
+		
+	}else{
+		offlinePrint = true;
+		speedPID_ext();
+		
+		eMot.setSpeed(eSFrac);
+		eMot.run(eDir);
+		eSens.setDirection(eDir);
+		
+	}
 	
-	/*if(!rotation || (rDir == 1 && rPos >= rDes - rDes * 0.05) || (rDir == -1 && rPos <= rDes + rDes*0.05) ){
-		rMot.stop();
-	}else rMot.run(rDir);
-	*/
-	
-	//if(!extension || (eDir == 1 && ePos >= eDes - eDes * 0.05) || (eDir == -1 && ePos <= eDes + eDes*0.05) ){
-		//rMot.stop();
-	//}else// rMot.run(rDir);
-	/*
-	
-	Serial.print("rPos = "); Serial.println(rPos);
-	Serial.print("rDes = "); Serial.println(rDes);
-	Serial.print("rSpeed = "); Serial.println(rSpeed);
-	Serial.println();
-	
-	Serial.print("ePos = "); Serial.println(ePos);
-	Serial.print("eDes = "); Serial.println(eDes);
-	Serial.print("eSpeed = "); Serial.println(eSpeed);
-	Serial.println();
-	Serial.println("************************************************");
-	Serial.println();
+	loopCount++;
+	if(loopCount > 250){
+		if(eRunning && test){ Serial.print("ePos = "); Serial.println(ePos); }
+		if(eRunning && test){ Serial.print("eDes = "); Serial.println(eDes); }
+		if(eRunning && test){ Serial.print("eSFrac = "); Serial.println(eSFrac); }
+		if(eRunning && test){ Serial.print("eSpeed = "); Serial.println(eSpeed); }
+		if(eRunning && test){ Serial.print("eRunning = "); Serial.println(eRunning); }
+		if(eRunning && test) Serial.println();
+		loopCount = 0;
+	}
+}
 
-	delay(500);*/
+void goHome(){
+	Serial.print("Homing");
+	offlinePrint = true;
+	eMot.setSpeed(0.7);
+	eMot.run(-1);
+	for(int i=0;i<20;i++){
+		delay(125);
+		Serial.print(".");
+	}Serial.println();
+	eMot.stop();
+	eSens.setLocation(0.0);
+	ePos = eSens.getLocation();
+	eRunning = false;
+	beforeTilt = true;
+	Serial.println("Should be home now");
 }

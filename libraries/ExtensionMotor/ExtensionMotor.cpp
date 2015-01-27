@@ -10,7 +10,6 @@
 static int	_fwd[3] = {1,0,0};
 static int	_bck[3] = {0,1,0};
 static int	_stop[3] ={1,1,0};
-static int	_free[3] ={0,0,0};
 	
 
 ExtensionMotor::ExtensionMotor(int fwd, int rev, int dis){
@@ -40,13 +39,6 @@ bool ExtensionMotor::run(int direction){
 bool ExtensionMotor::stop(){
 	for(int i=0;i<3;i++)
 		digitalWrite(_pins[i],_stop[i]);
-	
-	return true;
-}
-
-bool ExtensionMotor::free(){
-	for(int i=0;i<3;i++)
-		digitalWrite(_pins[i],_free[i]);
 	
 	return true;
 }

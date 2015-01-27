@@ -1,4 +1,5 @@
 /* Test code to find the fractional speed value on which the motor will run
+	Serial commands: "rsfrac <0.0 - 1.0>" and "esfrac <0.0 - 1.0>" and "home"(returns it to home position, then sets location to 0)
    @author Marien Wolthuis
    date created 21/1/2015			*/
    
@@ -68,8 +69,6 @@ void setup(){
   	interrupts();             
 
 	attachInterrupt(0, ISR_eSens, FALLING);
-
-	goHome();
 	
 	Serial.begin(9600);
 }
@@ -77,7 +76,7 @@ void setup(){
 void ISR_eSens(){
 	eSens.setDirection(1);
 	eSpeed = eSens.read();
-	//Serial.println(eSens.getLocation());
+	Serial.println(eSens.getLocation()/9.0);
 }
 
 ISR(TIMER1_OVF_vect){
@@ -96,25 +95,28 @@ void processSerial(){
 	}
 	
 	if(stringComplete) {
-		if(inputString.startsWith("eSFrac")){
-			String val = inputString.substring(7,10);
+		if(inputString.startsWith("esfrac")){
+			String val = inputString.substring(7,inputString.length());
 			eSFrac = val.toFloat();
 			Serial.print("Attempting eSFrac ");Serial.println(eSFrac);
+			inputString = "";
+			stringComplete = false;
+			
 			eMot.setSpeed(eSFrac);
 			eMot.run(1);
 			delay(1000);
 			eMot.stop();
 			Serial.println("Done.");
-		}else if(inputString.startsWith("rSFrac")){ // not fully implemented yet
+		}else if(inputString.startsWith("rsfrac")){ // not fully implemented yet
 			Serial.print("Attempting rSFrac ");Serial.println(rSFrac);
-			String val = inputString.substring(7,10);
+			String val = inputString.substring(7,inputString.length());
 			rSFrac = val.toFloat();
 			rMot.setSpeed(rSFrac);
 			rMot.run(1);
 			delay(1000);
 			rMot.stop();
 			Serial.println("Done.");
-		}else if(inputString == "home"){
+		}else if(inputString == "home\n"){
 			goHome();
 		}
 		
@@ -126,21 +128,6 @@ void processSerial(){
 void loop(){
 	processSerial();
 	
-	ePos = eSens.getLocation();
-	
-	Serial.print("rPos = "); Serial.println(rPos);
-	Serial.print("rDes = "); Serial.println(rDes);
-	Serial.print("rSpeed = "); Serial.println(rSpeed);
-	Serial.println();
-	
-	Serial.print("ePos = "); Serial.println(ePos);
-	Serial.print("eDes = "); Serial.println(eDes);
-	Serial.print("eSpeed = "); Serial.println(eSpeed);
-	Serial.println();
-	Serial.println("************************************************");
-	Serial.println();
-
-	delay(500);
 }
 
 
@@ -154,5 +141,5 @@ void goHome(){
 	}Serial.println();
 	eMot.stop();
 	eSens.setLocation(0.0);
-	Serial.println("Should be home now");
+	Serial.print("Should be home now (ePos = ");Serial.print(ePos);Serial.println(").");
 }

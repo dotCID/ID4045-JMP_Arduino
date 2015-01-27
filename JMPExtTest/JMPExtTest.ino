@@ -13,12 +13,12 @@
 #define EPOS_MAX 525
 #define EPOS_MIN 0
 
-#define ESFRAC_MIN 0.4
+#define ESFRAC_MIN 0.5
 
 #define MOVEMENT_TIMEOUT 2000
 
 #define TILT_POINT 72
-#define TILT_FRAC 0.6
+#define TILT_FRAC 0.55
 
 int loopCount;
 int offlinePrint = true;
@@ -33,10 +33,10 @@ float eSpeedDes = 0.01; // m/s
 float eSFrac = ESFRAC_MIN;
 
 float eSpeed_P_accel = 0.1; 			// P controllers
-float eSpeed_P_brake = 0.8;
+float eSpeed_P_brake = 0.3;
 
 bool eBrake, eRunning;
-float ePos, eDes;
+float ePos, eDes, eDis;
 int eDir;
 
 unsigned long movementTime;
@@ -59,11 +59,9 @@ void setup(){
 	
 	Serial.begin(9600);
 	
-	goHome();
 }
 
 void ISR_eSens(){
-	//eSens.setDirection(1);
 	eSpeed = eSens.read();
 	//Serial.println(eSens.getLocation());
 }
@@ -85,11 +83,11 @@ void processSerial(){
 			eDes = EPOS_MIN;
 			eRunning = true;
 		}else 
-		if(inputString == "zeroPosition\n"){
+		if(inputString == "home\n"){
 			goHome();
 		}else if(inputString.startsWith("aExt")){
 			eRunning = true;
-			String val = inputString.substring(5,10);
+			String val = inputString.substring(5,inputString.length());
 			eDes = val.toFloat();
 			eDes = floor(eDes/9.0)*9.0; // convert to intervals of 9mm
 			Serial.print("eDes is now ");Serial.println(eDes);
@@ -106,6 +104,8 @@ int speedPID_ext(){
 	if(!movementActive){
 		movementTime = millis();
 		movementActive = true;
+		if(ePos > eDes) eDis = ePos - eDes;
+		else eDis = eDes - ePos;
 	}else{
 		if(millis()-movementTime>MOVEMENT_TIMEOUT){
 			Serial.println("****  TIMEOUT! ****");
@@ -117,9 +117,9 @@ int speedPID_ext(){
 		}
 	}
 	
-	if(eDir == 1 && ePos > 0.5 * eDes){
+	if(eDir == 1 && ePos > 0.60 * eDis){
 		eBrake = true;
-	}else if(eDir == -1 && ePos < 0.5 * eDes){
+	}else if(eDir == -1 && ePos < 0.60 * eDis){
 		eBrake = true;
 	}else eBrake = false;
 	
@@ -163,11 +163,11 @@ void loop(){
 	
 	calcDir();
 	eSens.setDirection(eDir);	
-	//if(eRunning) {
+	if(eRunning) {
 		ePos = eSens.getLocation(); 
-	//}else{
-	//	eSens.setLocation(ePos); // if it's not under power, assume any changes to be non relevant
-	//}
+	}else{
+		eSens.setLocation(ePos); // if it's not under power, assume any changes to be non relevant
+	}
 	
 	if(!eRunning){
 		if(offlinePrint) { Serial.println("**** OFFLINE ****"); offlinePrint = false;
@@ -218,14 +218,15 @@ void loop(){
 void goHome(){
 	Serial.print("Homing");
 	offlinePrint = true;
-	eMot.setSpeed(ESFRAC_MIN);
+	eMot.setSpeed(0.7);
 	eMot.run(-1);
-	for(int i=0;i<10;i++){
+	for(int i=0;i<20;i++){
 		delay(125);
 		Serial.print(".");
 	}Serial.println();
 	eMot.stop();
 	eSens.setLocation(0.0);
+	ePos = eSens.getLocation();
 	eRunning = false;
 	beforeTilt = true;
 	home = true;
