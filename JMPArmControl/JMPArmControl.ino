@@ -9,6 +9,8 @@
 #include <ExtensionSensor2.h>
 #include <Math.h>
 
+#define ARM_LENGTH 495
+
 #define UP_PIN 10
 #define DOWN_PIN 11
 
@@ -142,19 +144,25 @@ void processSerial(){
 				delay(250);
 		 	}
 		}else if(inputString == "on\n"){
+			Serial.println("LED on");
 		    digitalWrite(13,HIGH);
 		}else if(inputString == "off\n"){
+			Serial.println("LED off");
 		    digitalWrite(13,LOW);
 		}else if(inputString == "up\n"){
+			Serial.println("Going all the way up");
 			rDes = RPOS_MAX;
 			rRunning = true;
 		}else if(inputString == "down\n"){
+			Serial.println("Going all the way down");
 			rDes = RPOS_MIN;
 			rRunning = true;
 		}else if(inputString == "extend\n"){
+			Serial.println("Extending fully");
 			eDes = EPOS_MAX;
 			eRunning = true;
 		}else if(inputString == "retract\n"){
+			Serial.println("Completely retracting");
 			eDes = EPOS_MIN;
 			eRunning = true;
 		}else if(inputString.startsWith("aExt")){
@@ -173,13 +181,19 @@ void processSerial(){
 			if(rDes>RPOS_MAX) rDes = RPOS_MAX;
 			Serial.print("rDes is now ");Serial.println(rDes);
 		}else if(inputString.startsWith("hPos")){
+			Serial.println("hPos set");
 			String val = inputString.substring(5,inputString.length());
 			hDes = val.toFloat();
 			calcERfromHV();
+			rRunning = true;
+			eRunning = true;
 		}else if(inputString.startsWith("vPos")){
+			Serial.println("vPos set");
 			String val = inputString.substring(5,inputString.length());
 			vDes = val.toFloat();
 			calcERfromHV();
+			rRunning = true;
+			eRunning = true;
 		}else if(inputString.startsWith("getPos")){
 			calcHVfromER();
 			
@@ -193,6 +207,7 @@ void processSerial(){
 			Serial.print(vPos);
 			Serial.println(")");
 		}else if(inputString == "home\n"){
+			Serial.println("Homing extension, rotating down after");
 			goHome();
 		}
 		
@@ -203,22 +218,6 @@ void processSerial(){
 
 int speedPID_ext(){
 	if(!eRunning) return 0; // quit if we're supposed to stand still
-	
-	if(!eMovementActive){
-		eMovementTime = millis();
-		eMovementActive = true;
-		if(ePos > eDes) eDis = ePos - eDes;
-		else eDis = eDes - ePos;
-	}else{
-		if(millis()-eMovementTime>E_MOVEMENT_TIMEOUT){
-			Serial.println("****  TIMEOUT! ****");
-			eRunning  = false;
-			eMovementActive = false;
-			eMot.stop();
-			eSFrac = 0;
-			return -1;
-		}
-	}
 	
 	if(eDir == 1 && (eDes - ePos) > 0.60 * eDis){
 		eBrake = true;
@@ -257,27 +256,46 @@ int speedPID_ext(){
 	return 1;
 }
 
+int timeOutCheck(){
+	if(eRunning){
+		if(!eMovementActive){
+			eMovementTime = millis();
+			eMovementActive = true;
+			if(ePos > eDes) eDis = ePos - eDes;
+			else eDis = eDes - ePos;
+		}else{
+			if(millis()-eMovementTime>E_MOVEMENT_TIMEOUT){
+				if(test) Serial.println("****  EXTENSION TIMEOUT! ****");
+				eRunning  = false;
+				eMovementActive = false;
+				eMot.stop();
+				eSFrac = 0;
+				return -1;
+			}
+		}
+	}
+	
+	if(rRunning){
+		if(!rMovementActive){
+			rMovementTime = millis();
+			rMovementActive = true;
+			if(rPos > rDes) rDis = rPos - rDes;
+			else rDis = rDes - rPos;
+		}else{
+			if(millis()-rMovementTime>R_MOVEMENT_TIMEOUT){
+				if(test) Serial.println("****  ROTATION TIMEOUT! ****");
+				rRunning  = false;
+				rMovementActive = false;
+				rMot.stop();
+				rSFrac = 0;
+				return -2;
+			}
+		}
+	}
+}
 
 int speedPID_rot(){
 	if(!rRunning) return 0; // quit if we're supposed to stand still
-	
-	if(!rMovementActive){
-		rMovementTime = millis();
-		rMovementActive = true;
-		if(rPos > rDes) rDis = rPos - rDes;
-		else rDis = rDes - rPos;
-		
-		Serial.print("///// rDis: ");Serial.println(rDis);
-	}else{
-		if(millis()-rMovementTime>R_MOVEMENT_TIMEOUT){
-			Serial.println("****  TIMEOUT! ****");
-			rRunning  = false;
-			rMovementActive = false;
-			rMot.stop();
-			rSFrac = 0;
-			return -1;
-		}
-	}
 	
 	if(rDir == 1 && (rDes - rPos) > 0.95 * rDis){
 		rBrake = true;
@@ -314,18 +332,22 @@ void calcDir(){
 }
 
 void calcERfromHV(){
-	rDes = atan2(vDes, hDes);
+	// the hPos coming in is as extension to the arm
+	rDes = atan2(vDes, hDes+ARM_LENGTH);
 	if(rDes>RPOS_MAX) rDes = RPOS_MAX;
 	if(rDes<RPOS_MIN) rDes = RPOS_MIN;
 	
-	eDes = vDes / sin(rDes);
+	eDes = ((vDes+ARM_LENGTH) / sin(rDes))-ARM_LENGTH;
 	if(eDes>EPOS_MAX) eDes = EPOS_MAX;
 	if(eDes<EPOS_MIN) eDes = EPOS_MIN;
+	
+	if(test) { Serial.print("rDes calculated: ");Serial.println(rDes); Serial.print("eDes calculated: ");Serial.println(eDes); }
 }
 
 void calcHVfromER(){
 	hPos = cos(rPos) * ePos;
 	vPos = sin(rPos) * ePos;
+	if(test) { Serial.print("hPos calculated: ");Serial.println(hPos); Serial.print("vPos calculated: ");Serial.println(vPos); }
 }
 
 void loop(){
@@ -340,7 +362,8 @@ void loop(){
 	
 	rPos = rSens.getLocation();
 	
-	eSens.setDirection(eDir);	
+	eSens.setDirection(eDir);
+	timeOutCheck();
 	moveToDestination();
 	
 	loopCount++;
@@ -365,7 +388,7 @@ void loop(){
 
 void moveToDestination(){
 	if(!eRunning && !rRunning){
-		if(offlinePrint) { 
+		if(test && offlinePrint) { 
 			Serial.println("**** OFFLINE ****"); offlinePrint = false;
 			Serial.print("ePos = ");Serial.println(ePos); 
 			Serial.print("rPos = ");Serial.println(rPos); 
@@ -383,9 +406,11 @@ void moveToDestination(){
 	// Extension destination checking and moving
 	if(eRunning && ((eDir == 1 && ePos >= eDes-1) || (eDir == -1 && ePos <=eDes+1))){ // if we're close stop
 		offlinePrint = true;
-		Serial.println("**** EXTENSION: CLOSE CALL! ****");
-		Serial.print("ePos = ");Serial.println(ePos);
-		Serial.print("eDes = ");Serial.println(eDes);
+		if(test){
+			Serial.println("**** EXTENSION: CLOSE CALL! ****");
+			Serial.print("ePos = ");Serial.println(ePos);
+			Serial.print("eDes = ");Serial.println(eDes);
+		}
 		eMot.stop();
 		eSFrac = ESFRAC_MIN;
 		eRunning = false;
@@ -393,9 +418,11 @@ void moveToDestination(){
 		
 	}else if(eRunning && ((eDir == 1 && ePos >= eDes) || (eDir == -1 && ePos <=eDes)) ){ // in case of overshoot, stop
 		offlinePrint = true;
-		Serial.println("**** EXTENSION: OVERSHOT! ****");
-		Serial.print("ePos = ");Serial.println(ePos);
-		Serial.print("eDes = ");Serial.println(eDes);
+		if(test){
+			Serial.println("**** EXTENSION: OVERSHOT! ****");
+			Serial.print("ePos = ");Serial.println(ePos);
+			Serial.print("eDes = ");Serial.println(eDes);
+		}
 		eMot.stop();
 		eSFrac = 0;
 		eRunning = false;
@@ -414,9 +441,11 @@ void moveToDestination(){
 	// same for rotation
 	if(rRunning && ((rDir == 1 && rPos >= rDes-0.01) || (rDir == -1 && rPos <=rDes+0.01))){ // if we're close
 		offlinePrint = true;
-		Serial.println("**** ROTATION: CLOSE CALL! ****");
-		Serial.print("rPos = ");Serial.println(rPos);
-		Serial.print("rDes = ");Serial.println(rDes);
+		if(test){
+			Serial.println("**** ROTATION: CLOSE CALL! ****");
+			Serial.print("rPos = ");Serial.println(rPos);
+			Serial.print("rDes = ");Serial.println(rDes);
+		}
 		rMot.stop();
 		//rSFrac = RSFRAC_MIN;
 		rRunning = false;
@@ -424,9 +453,11 @@ void moveToDestination(){
 		
 	}else if(rRunning && ((rDir == 1 && rPos >= rDes) || (rDir == -1 && rPos <=rDes) )){ // in case of overshoot, stop
 		offlinePrint = true;
-		Serial.println("**** ROTATION: OVERSHOT! ****");
-		Serial.print("rPos = ");Serial.println(rPos);
-		Serial.print("rDes = ");Serial.println(rDes);
+		if(test){
+			Serial.println("**** ROTATION: OVERSHOT! ****");
+			Serial.print("rPos = ");Serial.println(rPos);
+			Serial.print("rDes = ");Serial.println(rDes);
+		}
 		rMot.stop();
 		//rSFrac = 0;
 		rRunning = false;
@@ -440,7 +471,7 @@ void moveToDestination(){
 }
 
 void goHome(){
-	Serial.print("Homing");
+	if(test) Serial.print("Homing");
 	offlinePrint = true;
 	rDes = RPOS_MIN;
 	rRunning = true;
@@ -448,12 +479,12 @@ void goHome(){
 	eMot.run(-1);
 	for(int i=0;i<20;i++){
 		delay(125);
-		Serial.print(".");
+		if(test) Serial.print(".");
 	}Serial.println();
 	eMot.stop();
 	eSens.setLocation(0.0);
 	ePos = eSens.getLocation();
 	eRunning = false;
 	beforeTilt = true;
-	Serial.println("Extension should be home now");
+	if(test) Serial.println("Extension should be home now");
 }

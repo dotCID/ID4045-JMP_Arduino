@@ -133,7 +133,7 @@ void loop(){
 
 void goHome(){
 	Serial.print("Homing");
-	eMot.setSpeed(0.6);
+	eMot.setSpeed(0.8);
 	eMot.run(-1);
 	for(int i=0;i<10;i++){
 		delay(125);
